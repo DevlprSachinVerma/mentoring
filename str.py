@@ -1,6 +1,5 @@
 import streamlit as st
 import sqlite3
-import google.generativeai as genai
 from PIL import Image
 from io import BytesIO
 import time
@@ -15,13 +14,12 @@ from groq import Groq
 # Load environment variables
 load_dotenv(override=True)
 
+def load_credentials():
+    with open("credentials.json", "r") as file:
+        return json.load(file)
+
 # Student credentials dictionary
-STUDENT_CREDENTIALS = {
-    "student1": "password1",
-    "student2": "password2",
-    # Add more students here...
-    "student50": "password50"
-}
+STUDENT_CREDENTIALS = load_credentials()
 
 # Function to retrieve data from the database using an SQL query
 def read_sql_query(sql, db):
@@ -71,8 +69,8 @@ def send_email(email_body, user):
         # Email configuration
         smtp_host = "smtp.elasticemail.com"
         smtp_port = 2525  # or 587 if you prefer TLS
-        sender_email = "mentorsmantra@gmail.com"
-        receiver_email = "mentorsmantra@gmail.com"
+        sender_email = os.getenv("EMAIL_PASSWORD")
+        receiver_email = os.getenv("EMAIL_PASSWORD")
         password = os.getenv("EMAIL_PASSWORD")  # Store this securely in your .env file
 
         # Create message
