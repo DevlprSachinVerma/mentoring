@@ -14,12 +14,9 @@ from groq import Groq
 # Load environment variables
 load_dotenv(override=True)
 
-def load_credentials():
-    with open("credentials.json", "r") as file:
-        return json.load(file)
 
 # Student credentials dictionary
-STUDENT_CREDENTIALS = load_credentials()
+STUDENT_CREDENTIALS = st.secrets["student_credentials"]
 
 # Function to retrieve data from the database using an SQL query
 def read_sql_query(sql, db):
@@ -69,8 +66,8 @@ def send_email(email_body, user):
         # Email configuration
         smtp_host = "smtp.elasticemail.com"
         smtp_port = 2525  # or 587 if you prefer TLS
-        sender_email = os.getenv("EMAIL_PASSWORD")
-        receiver_email = os.getenv("EMAIL_PASSWORD")
+        sender_email = st.secrets["EMAIL_PASSWORD"]
+        receiver_email = st.secrets["EMAIL"]
         password = os.getenv("EMAIL_PASSWORD")  # Store this securely in your .env file
 
         # Create message
@@ -116,12 +113,10 @@ if authenticate_user():
     # Chatbot Interface
     if page == "Chatbot":
         st.header("Student Chatbot Interface")
-        working_dir = os.path.dirname(os.path.abspath(__file__))
-        config_data = json.load(open(f"{working_dir}/config.json"))
 
-        GROQ_API_KEY = config_data["GROQ_API_KEY"]
-        # save the api key to environment variable
-        os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+
+        GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+
         client = Groq()
 
         # initialize the chat history as streamlit session state of not present already

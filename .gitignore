@@ -4,3 +4,4 @@ venv/
 photos/
 extracted_images/
 credentials.json
+config.json
