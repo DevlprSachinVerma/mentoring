@@ -66,9 +66,9 @@ def send_email(email_body, user):
         # Email configuration
         smtp_host = "smtp.elasticemail.com"
         smtp_port = 2525  # or 587 if you prefer TLS
-        sender_email = st.secrets["EMAIL_PASSWORD"]
+        sender_email = st.secrets["EMAIL"]
         receiver_email = st.secrets["EMAIL"]
-        password = os.getenv("EMAIL_PASSWORD")  # Store this securely in your .env file
+        password = st.secrets["EMAIL_PASSWORD"]  # Store this securely in your .env file
 
         # Create message
         message = MIMEMultipart()
