@@ -1,0 +1,6 @@
+# .gitignore
+.env
+config.json
+venv/
+photos/
+extracted_images/
