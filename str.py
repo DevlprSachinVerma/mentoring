@@ -101,7 +101,8 @@ def send_email(email_body, user):
         print(f"Error sending email: {e}")
         return False
 
-st.code('print("Hello, Welcome to Mentors Mantra!:smile:")', language='python')
+st.write("Hello, Welcome to Mentors Mantra!:smile:")
+
 if authenticate_user():
     # Initialize session state variables
     if 'test_questions' not in st.session_state:
