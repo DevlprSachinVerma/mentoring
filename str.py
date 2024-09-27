@@ -64,6 +64,13 @@ def creds_entered():
 
 def authenticate_user():
     if "authenticated" not in st.session_state:
+        st.markdown(
+            """
+            <h2 style='text-align: center; font-size: 40px;'>Hello, Welcome to 
+            <span style='color: purple; font-size: 48px;'>Mentors MantrA!</span>! 😄</h2>
+            """,
+            unsafe_allow_html=True
+        )
         st.text_input(label="Username:", value="", key="user", on_change=creds_entered)
         st.text_input(label="Password:", value="", key="passwd", type="password", on_change=creds_entered)
         return False
@@ -105,7 +112,6 @@ def send_email(email_body, user):
         print(f"Error sending email: {e}")
         return False
 
-st.write("Hello, Welcome to the Mentors Mantra! :smile:")
 if authenticate_user():
     # Initialize session state variables
     if 'test_questions' not in st.session_state:
