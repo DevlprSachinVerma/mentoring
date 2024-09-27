@@ -126,7 +126,7 @@ if authenticate_user():
         st.session_state.end_time = None
 
     # Sidebar Navigation
-    st.sidebar.header("Navigation")
+    st.sidebar.header("")
     page = st.sidebar.radio("Go to", ["Chatbot", "Create Test"])
 
     # Chatbot Interface
@@ -148,7 +148,7 @@ if authenticate_user():
                 st.markdown(message["content"])
 
         # input field for user's message:
-        user_prompt = st.chat_input("Ask LLAMA...")
+        user_prompt = st.chat_input("Wanna ask Something....")
         if user_prompt:
             st.chat_message("user").markdown(user_prompt)
             st.session_state.chat_history.append({"role": "user", "content": user_prompt})
@@ -174,7 +174,7 @@ if authenticate_user():
 
     # Create Test Interface
     elif page == "Create Test":
-        st.header("Create a Student Test")
+        st.header("Create a Test")
         
         subject_chapters = {
             "Math": ["Algebra", "Calculus", "Geometry"],
