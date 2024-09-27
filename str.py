@@ -11,13 +11,11 @@ from dotenv import load_dotenv
 import json
 from groq import Groq
 
-# Set page configuration (must be at the top of the script)
+# Streamlit App Setup
 st.set_page_config(page_title="Student Chatbot and Test Creator", layout="wide")
-
 # Load environment variables
 load_dotenv(override=True)
 
-# Hide the "Fork" and "GitHub" icons with custom CSS
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -26,6 +24,7 @@ hide_streamlit_style = """
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 
 # Student credentials dictionary
 STUDENT_CREDENTIALS = st.secrets["student_credentials"]
@@ -103,6 +102,8 @@ def send_email(email_body, user):
         return False
 
 if authenticate_user():
+
+
     # Initialize session state variables
     if 'test_questions' not in st.session_state:
         st.session_state.test_questions = []
@@ -233,38 +234,108 @@ if authenticate_user():
 
             if time_left <= 0:
                 st.session_state.test_completed = True
+                st.rerun()
 
-            # Display test questions and options
+            total_q = len(st.session_state.test_questions)
+            
             for i, question in enumerate(st.session_state.test_questions):
-                st.write(f"Question {i+1}: {question['SUBJECT']} - {question['CHAPTER']}")
-                st.write(f"Difficulty: {question['DIFFICULTY']}")
+                st.subheader(f"Question {i + 1} of {total_q}")
+                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+
                 if question['IMAGE']:
                     display_image(question['IMAGE'])
-                options = [question["opt1"], question["opt2"], question["opt3"], question["opt4"]]
-                st.radio(f"Answer to Question {i+1}", options, key=f"answer_{i}")
 
-            if st.button("End Test"):
+                options = [
+                    'A',
+                    'B',
+                    'C',
+                    'D'
+                ]
+                
+                user_answers = st.multiselect(
+                    f"Select your answer(s) for Question {i+1}:",
+                    options,
+                    format_func=lambda x: f"{x}",
+                    key=f"q_{i}"
+                )
+                
+                if user_answers:
+                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
+
+                st.write("---")
+
+            if st.button("Submit Test"):
                 st.session_state.test_completed = True
+                st.rerun()
 
-        # Scorecard and results
         if st.session_state.test_completed:
-            st.header("Test Completed!")
-            correct_answers = 0
+            st.header("Test Completed")
+            score = 0
             total_questions = len(st.session_state.test_questions)
-            
-            # Calculate score
+
             for i, question in enumerate(st.session_state.test_questions):
-                selected_answer = st.session_state.get(f"answer_{i}")
-                if selected_answer == question["ans"]:
-                    correct_answers += 1
+                user_answer = st.session_state.user_answers.get(i, "")
+                if user_answer == question['ans']:
+                    score += 1
+
+            st.write(f"Your score: {score*4} out of {total_questions*4}")
+
+            st.subheader("Detailed Results")
+            results = []
+            for i, question in enumerate(st.session_state.test_questions):
+                user_answer = st.session_state.user_answers.get(i, "")
+                correct_answer = question['ans']
+                
+                st.write(f"Question {i+1}:")
+                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+                
+                if question['IMAGE']:
+                    display_image(question['IMAGE'])
+                
+                options = [
+                    'A',
+                    'B',
+                    'C',
+                    'D'
+                ]
+                
+                for option in options:
+                    if option in user_answer and option in correct_answer:
+                        st.write(f":green[{option}] (Your answer - Correct)")
+                    elif option in user_answer and option not in correct_answer:
+                        st.write(f":red[{option}] (Your answer - Incorrect)")
+                    elif option not in user_answer and option in correct_answer:
+                        st.write(f":green[{option}] (Correct answer - Not selected)")
+                    else:
+                        st.write(f"{option}")
+                
+                st.write("---")
+                
+                results.append(f"Question {i+1}:")
+                results.append(f"Your answer: {user_answer}")
+                results.append(f"Correct answer: {correct_answer}")
+                results.append("---")
+
+            # Send email to student and teacher
+            scorecard = "\n".join(results)
+            email_body = f"Test Results\n\nScore: {score} out of {total_questions}\n\n{scorecard}"
+            send_email(email_body, st.session_state["student_id"])
             
-            score = correct_answers / total_questions * 100
-            st.write(f"Your score: {score}% ({correct_answers} out of {total_questions})")
-            
-            # Send results via email
-            user = st.session_state.get('student_id', "Unknown User")
-            email_body = f"Test Score: {score}% ({correct_answers}/{total_questions})"
-            if send_email(email_body, user):
-                st.success("Results sent via email!")
-            else:
-                st.error("Failed to send email.")
+            if st.button("Start New Test"):
+                st.session_state.test_questions = []
+                st.session_state.user_answers = {}
+                st.session_state.test_completed = False
+                st.session_state.start_time = None
+                st.session_state.end_time = None
+                st.rerun()
+
+        # Debugging information (optional)
+        if st.checkbox("Show Debug Info"):
+            st.write("Debug: Current selections")
+            st.write(f"Selected subjects: {st.session_state.get('selected_subjects', [])}")
+            st.write(f"Selected chapters: {st.session_state.get('selected_chapters', [])}")
+            st.write(f"Selected difficulty: {st.session_state.get('difficulty', [])}")
+            st.write(f"Number of questions: {num_questions}")
+            st.write(f"Timer duration: {timer_duration} minutes")
+            st.write(f"User answers: {st.session_state.user_answers}")
+            st.write(f"Test completed: {st.session_state.test_completed}")
