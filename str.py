@@ -101,9 +101,8 @@ def send_email(email_body, user):
         print(f"Error sending email: {e}")
         return False
 
+st.code('print("Hello, Welcome to Mentors Mantra!:smile:")', language='python')
 if authenticate_user():
-
-
     # Initialize session state variables
     if 'test_questions' not in st.session_state:
         st.session_state.test_questions = []
@@ -328,14 +327,3 @@ if authenticate_user():
                 st.session_state.start_time = None
                 st.session_state.end_time = None
                 st.rerun()
-
-        # Debugging information (optional)
-        if st.checkbox("Show Debug Info"):
-            st.write("Debug: Current selections")
-            st.write(f"Selected subjects: {st.session_state.get('selected_subjects', [])}")
-            st.write(f"Selected chapters: {st.session_state.get('selected_chapters', [])}")
-            st.write(f"Selected difficulty: {st.session_state.get('difficulty', [])}")
-            st.write(f"Number of questions: {num_questions}")
-            st.write(f"Timer duration: {timer_duration} minutes")
-            st.write(f"User answers: {st.session_state.user_answers}")
-            st.write(f"Test completed: {st.session_state.test_completed}")
