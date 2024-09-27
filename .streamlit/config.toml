@@ -1,0 +1,9 @@
+[browser]
+gather_usage_stats = false  # This disables the 'Made with Streamlit' branding
+
+[theme]
+primaryColor="#6a0dad"  # Purple color for buttons and other primary UI elements
+backgroundColor="#f0f0f5"  # Light background color
+secondaryBackgroundColor="#e0e0f5"  # Slightly darker secondary background
+textColor="#333333"  # Dark text color
+font="sans serif"  # Optional: You can also choose 'monospace' or 'serif'
