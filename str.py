@@ -101,8 +101,12 @@ def send_email(email_body, user):
         print(f"Error sending email: {e}")
         return False
 
-st.write("Hello, Welcome to Mentors Mantra!:smile:")
-
+st.markdown(
+    """
+    <h2 style='text-align: center; font-size: 36px;'>Hello, Welcome to Mentors Mantra!:smile:</h2>
+    """,
+    unsafe_allow_html=True
+)
 if authenticate_user():
     # Initialize session state variables
     if 'test_questions' not in st.session_state:
