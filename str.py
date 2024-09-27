@@ -103,8 +103,8 @@ def send_email(email_body, user):
 
 st.markdown(
     """
-    <h2 style='text-align: center; font-size: 36px;'>Hello, Welcome to 
-    <span style='color: purple; font-size: 48px;'>Mentors Mantra</span>! 😄</h2>
+    <h2 style='text-align: center; font-size: 40px;'>Hello, Welcome to 
+    <span style='color: purple; font-size: 48px;'>Mentors MantrA!</span>! 😄</h2>
     """,
     unsafe_allow_html=True
 )
