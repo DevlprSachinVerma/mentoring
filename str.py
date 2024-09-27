@@ -14,6 +14,15 @@ from groq import Groq
 # Load environment variables
 load_dotenv(override=True)
 
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 
 # Student credentials dictionary
 STUDENT_CREDENTIALS = st.secrets["student_credentials"]
