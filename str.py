@@ -12,7 +12,11 @@ import json
 from groq import Groq
 
 # Streamlit App Setup
-st.set_page_config(page_title="Student Chatbot and Test Creator", layout="wide")
+st.set_page_config(
+    page_title="Mentors Mantra", 
+    page_icon="Logo.png",  # Change 'logo.png' to your file path or URL
+    layout="wide"
+)
 # Load environment variables
 load_dotenv(override=True)
 
