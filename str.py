@@ -12,6 +12,35 @@ from groq import Groq
 from datetime import datetime
 import json
 
+# Function to initialize the results database
+def init_results_db():
+    conn = sqlite3.connect('result.db')
+    cursor = conn.cursor()
+    
+    # Create test_results table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS test_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            subjects TEXT NOT NULL,
+            chapters TEXT NOT NULL,
+            difficulty_levels TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+
+# Add this to your existing Streamlit app setup
+if 'initialized_db' not in st.session_state:
+    init_results_db()
+    st.session_state.initialized_db = True
+
 # Streamlit App Setup
 st.set_page_config(
     page_title="Mentors Mantra", 
@@ -83,28 +112,7 @@ def authenticate_user():
             st.text_input(label="Password:", value="", key="passwd", type="password", on_change=creds_entered)
             return False
 
-# Function to initialize the results database
-def init_results_db():
-    conn = sqlite3.connect('result.db')
-    cursor = conn.cursor()
-    
-    # Create test_results table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS test_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id TEXT NOT NULL,
-            timestamp DATETIME NOT NULL,
-            score INTEGER NOT NULL,
-            total_questions INTEGER NOT NULL,
-            subjects TEXT NOT NULL,
-            chapters TEXT NOT NULL,
-            difficulty_levels TEXT NOT NULL,
-            duration_minutes INTEGER NOT NULL,
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+
 
 # Function to save test results
 def save_test_results(student_id, score, total_questions, subjects, chapters, 
@@ -156,10 +164,7 @@ def get_student_performance(student_id):
     
     return results
 
-# Add this to your existing Streamlit app setup
-if 'initialized_db' not in st.session_state:
-    init_results_db()
-    st.session_state.initialized_db = True
+
 
 if authenticate_user():
     # Initialize session state variables
