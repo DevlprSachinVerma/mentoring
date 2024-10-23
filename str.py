@@ -8,8 +8,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
-import json
 from groq import Groq
+from datetime import datetime
+import json
 
 # Streamlit App Setup
 st.set_page_config(
@@ -82,35 +83,83 @@ def authenticate_user():
             st.text_input(label="Password:", value="", key="passwd", type="password", on_change=creds_entered)
             return False
 
-# New function to send email
-def send_email(email_body, user):
+# Function to initialize the results database
+def init_results_db():
+    conn = sqlite3.connect('result.db')
+    cursor = conn.cursor()
+    
+    # Create test_results table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS test_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            subjects TEXT NOT NULL,
+            chapters TEXT NOT NULL,
+            difficulty_levels TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# Function to save test results
+def save_test_results(student_id, score, total_questions, subjects, chapters, 
+                     difficulty_levels, duration):
     try:
-        # Email configuration
-        smtp_host = "smtp.elasticemail.com"
-        smtp_port = 2525  # or 587 if you prefer TLS
-        sender_email = st.secrets["EMAIL"]
-        receiver_email = st.secrets["EMAIL"]
-        password = st.secrets["EMAIL_PASSWORD"]  # Store this securely in your .env file
-
-        # Create message
-        message = MIMEMultipart()
-        message["From"] = sender_email
-        message["To"] = receiver_email
-        message["Subject"] = "Test Results"
-
-        # Attach the email body
-        message.attach(MIMEText(email_body + "\n\nUser: " + user, "plain"))
-
-        # Create SMTP session
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()  # Enable TLS
-            server.login(sender_email, password)
-            server.send_message(message)
+        conn = sqlite3.connect('result.db')
+        cursor = conn.cursor()
         
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        cursor.execute('''
+            INSERT INTO test_results (
+                student_id, timestamp, score, total_questions, subjects,
+                chapters, difficulty_levels, duration_minutes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            student_id,
+            timestamp,
+            score,
+            total_questions,
+            json.dumps(subjects),
+            json.dumps(chapters),
+            json.dumps(difficulty_levels),
+            duration
+        ))
+        
+        conn.commit()
+        conn.close()
         return True
     except Exception as e:
-        print(f"Error sending email: {e}")
+        st.error(f"Error saving test results: {e}")
         return False
+
+# Function to get student performance history
+def get_student_performance(student_id):
+    conn = sqlite3.connect('result.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT timestamp, score, total_questions, subjects, chapters, 
+               difficulty_levels, duration_minutes
+        FROM test_results
+        WHERE student_id = ?
+        ORDER BY timestamp DESC
+    ''', (student_id,))
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    return results
+
+# Add this to your existing Streamlit app setup
+if 'initialized_db' not in st.session_state:
+    init_results_db()
+    st.session_state.initialized_db = True
 
 if authenticate_user():
     # Initialize session state variables
@@ -127,7 +176,7 @@ if authenticate_user():
 
     # Sidebar Navigation
     st.sidebar.header("")
-    page = st.sidebar.radio("Go to", ["Chatbot", "Create Test"])
+    page = st.sidebar.radio("Go to", ["Chatbot", "Create Test", "View Performance"])
 
     # Chatbot Interface
     if page == "Chatbot":
@@ -172,6 +221,35 @@ if authenticate_user():
             with st.chat_message("assistant"):
                 st.markdown(assistant_response)
 
+    if page == "View Performance":
+        st.header("Your Test Performance History")
+        
+        performance_data = get_student_performance(st.session_state["student_id"])
+        
+        if performance_data:
+            st.subheader("Test History")
+            for test in performance_data:
+                with st.expander(f"Test on {test[0]}"):
+                    st.write(f"Score: {test[1]} out of {test[2]*4}")
+                    st.write(f"Subjects: {', '.join(json.loads(test[3]))}")
+                    st.write(f"Chapters: {', '.join(json.loads(test[4]))}")
+                    st.write(f"Difficulty Levels: {', '.join(json.loads(test[5]))}")
+                    st.write(f"Duration: {test[6]} minutes")
+            
+            # Calculate and show statistics
+            scores = [test[1] for test in performance_data]
+            if scores:
+                st.subheader("Performance Statistics")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Average Score", f"{sum(scores)/len(scores):.1f}")
+                with col2:
+                    st.metric("Highest Score", max(scores))
+                with col3:
+                    st.metric("Total Tests Taken", len(scores))
+        else:
+            st.info("No test history available yet. Take a test to see your performance!")
+            
     # Create Test Interface
     elif page == "Create Test":
         st.header("Create a Test")
@@ -277,20 +355,59 @@ if authenticate_user():
                 st.session_state.test_completed = True
                 st.rerun()
 
+        # In your test completion section:
         if st.session_state.test_completed:
             st.header("Test Completed")
             score = 0
             total_questions = len(st.session_state.test_questions)
+            detailed_results = []
+        
 
             for i, question in enumerate(st.session_state.test_questions):
                 user_answer = st.session_state.user_answers.get(i, "")
-                if user_answer == question['ans']:
+                correct_answer = question['ans']
+                if user_answer == correct_answer:
                     score += 1
+                    
+                # For database storage
+                result_entry = {
+                    'question_num': i + 1,
+                    'user_answer': user_answer,
+                    'correct_answer': correct_answer,
+                    'subject': question['SUBJECT'],
+                    'chapter': question['CHAPTER'],
+                    'difficulty': question['DIFFICULTY']
+                }
+                detailed_results.append(result_entry)
+                
 
-            st.write(f"Your score: {score*4} out of {total_questions*4}")
+            # Calculate final score
+            final_score = score * 4
+            
+            # 1. Save results to SQLite
+            subjects = list(set(q['SUBJECT'] for q in st.session_state.test_questions))
+            chapters = list(set(q['CHAPTER'] for q in st.session_state.test_questions))
+            difficulties = list(set(q['DIFFICULTY'] for q in st.session_state.test_questions))
+            duration = int((st.session_state.end_time - st.session_state.start_time) / 60)
+            
+            if save_test_results(
+                st.session_state["student_id"],
+                final_score,
+                total_questions,
+                subjects,
+                chapters,
+                difficulties,
+                duration,
+            ):
+                st.success("Test results have been saved successfully!")
+            else:
+                st.warning("There was an issue saving your test results.")
+
+
+            # 3. Display results on screen
+            st.write(f"Your score: {final_score} out of {total_questions*4}")
 
             st.subheader("Detailed Results")
-            results = []
             for i, question in enumerate(st.session_state.test_questions):
                 user_answer = st.session_state.user_answers.get(i, "")
                 correct_answer = question['ans']
@@ -301,12 +418,7 @@ if authenticate_user():
                 if question['IMAGE']:
                     display_image(question['IMAGE'])
                 
-                options = [
-                    'A',
-                    'B',
-                    'C',
-                    'D'
-                ]
+                options = ['A', 'B', 'C', 'D']
                 
                 for option in options:
                     if option in user_answer and option in correct_answer:
@@ -319,17 +431,8 @@ if authenticate_user():
                         st.write(f"{option}")
                 
                 st.write("---")
-                
-                results.append(f"Question {i+1}:")
-                results.append(f"Your answer: {user_answer}")
-                results.append(f"Correct answer: {correct_answer}")
-                results.append("---")
 
-            # Send email to student and teacher
-            scorecard = "\n".join(results)
-            email_body = f"Test Results\n\nScore: {score} out of {total_questions}\n\n{scorecard}"
-            send_email(email_body, st.session_state["student_id"])
-            
+            # 4. Add button to start new test
             if st.button("Start New Test"):
                 st.session_state.test_questions = []
                 st.session_state.user_answers = {}
