@@ -28,7 +28,7 @@ def init_results_db():
             subjects TEXT NOT NULL,
             chapters TEXT NOT NULL,
             difficulty_levels TEXT NOT NULL,
-            duration_minutes INTEGER NOT NULL,
+            duration_minutes INTEGER NOT NULL
         )
     ''')
     
