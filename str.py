@@ -255,70 +255,73 @@ if authenticate_user():
         else:
             st.info("No test history available yet. Take a test to see your performance!")
             
-    # Create Test Interface
     elif page == "Create Test":
         st.header("Create a Test")
         
-        subject_chapters = {
-            "Math": ["Algebra", "Calculus", "Geometry"],
-            "Physics": ["Mechanics", "Optics", "Thermodynamics"],
-            "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry"]
-        }
+        # Only show test creation form if no test is in progress
+        if not st.session_state.test_questions:
+            subject_chapters = {
+                "Math": ["Algebra", "Calculus", "Geometry"],
+                "Physics": ["Mechanics", "Optics", "Thermodynamics"],
+                "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry"]
+            }
 
-        if 'available_chapters' not in st.session_state:
-            st.session_state.available_chapters = []
+            if 'available_chapters' not in st.session_state:
+                st.session_state.available_chapters = []
 
-        def update_chapters():
-            selected_subjects = st.session_state.selected_subjects
-            available_chapters = []
-            if selected_subjects:
-                for subject in selected_subjects:
-                    available_chapters.extend(subject_chapters[subject])
-            st.session_state.available_chapters = available_chapters
+            def update_chapters():
+                selected_subjects = st.session_state.selected_subjects
+                available_chapters = []
+                if selected_subjects:
+                    for subject in selected_subjects:
+                        available_chapters.extend(subject_chapters[subject])
+                st.session_state.available_chapters = available_chapters
 
-        st.multiselect("Select Subjects", list(subject_chapters.keys()), key="selected_subjects", on_change=update_chapters)
-        st.multiselect("Select Chapters", st.session_state.available_chapters, key="selected_chapters")
-        difficulty_levels = st.multiselect("Select Difficulty", ["Easy", "Medium", "Hard"], key="difficulty")
-        
-        num_questions = st.number_input("Number of Questions", min_value=1, max_value=50, value=10)
-        timer_duration = st.number_input("Test Duration (minutes)", min_value=1, max_value=180, value=30)
-
-        submit_test = st.button("Create Test")
-
-        if submit_test:
-            st.write("Creating test...")
+            st.multiselect("Select Subjects", list(subject_chapters.keys()), key="selected_subjects", on_change=update_chapters)
+            st.multiselect("Select Chapters", st.session_state.available_chapters, key="selected_chapters")
+            difficulty_levels = st.multiselect("Select Difficulty", ["Easy", "Medium", "Hard"], key="difficulty")
             
-            subjects = st.session_state.get('selected_subjects', [])
-            chapters = st.session_state.get('selected_chapters', [])
-            difficulty_levels = st.session_state.get('difficulty', [])
+            num_questions = st.number_input("Number of Questions", min_value=1, max_value=50, value=10)
+            timer_duration = st.number_input("Test Duration (minutes)", min_value=1, max_value=180, value=30)
 
-            subject_condition = "SUBJECT IN ({})".format(", ".join(f"'{s}'" for s in subjects)) if subjects else "1=1"
-            chapter_condition = "CHAPTER IN ({})".format(", ".join(f"'{ch}'" for ch in chapters)) if chapters else "1=1"
-            difficulty_condition = "DIFFICULTY IN ({})".format(", ".join(f"'{d}'" for d in difficulty_levels)) if difficulty_levels else "1=1"
+            submit_test = st.button("Create Test")
 
-            sql_query = f"""
-            SELECT SUBJECT, CHAPTER, DIFFICULTY, IMAGE, opt1, opt2, opt3, opt4, ans FROM STUDENT 
-            WHERE {subject_condition}
-            AND {chapter_condition}
-            AND {difficulty_condition}
-            ORDER BY RANDOM()
-            LIMIT {num_questions};
-            """
-            
-            try:
-                data = read_sql_query(sql_query, "test.db")
-                if data:
-                    st.session_state.test_questions = data
-                    st.session_state.user_answers = {}
-                    st.session_state.test_completed = False
-                    st.session_state.start_time = time.time()
-                    st.session_state.end_time = st.session_state.start_time + (timer_duration * 60)
-                    st.rerun()
-                else:
-                    st.warning("No questions found for the selected criteria.")
-            except Exception as e:
-                st.error(f"Error accessing database: {e}")
+            if submit_test:
+                st.write("Creating test...")
+                
+                subjects = st.session_state.get('selected_subjects', [])
+                chapters = st.session_state.get('selected_chapters', [])
+                difficulty_levels = st.session_state.get('difficulty', [])
 
+                subject_condition = "SUBJECT IN ({})".format(", ".join(f"'{s}'" for s in subjects)) if subjects else "1=1"
+                chapter_condition = "CHAPTER IN ({})".format(", ".join(f"'{ch}'" for ch in chapters)) if chapters else "1=1"
+                difficulty_condition = "DIFFICULTY IN ({})".format(", ".join(f"'{d}'" for d in difficulty_levels)) if difficulty_levels else "1=1"
+
+                sql_query = f"""
+                SELECT SUBJECT, CHAPTER, DIFFICULTY, IMAGE, opt1, opt2, opt3, opt4, ans FROM STUDENT 
+                WHERE {subject_condition}
+                AND {chapter_condition}
+                AND {difficulty_condition}
+                ORDER BY RANDOM()
+                LIMIT {num_questions};
+                """
+                
+                try:
+                    data = read_sql_query(sql_query, "test.db")
+                    if data:
+                        st.session_state.test_questions = data
+                        st.session_state.user_answers = {}
+                        st.session_state.test_completed = False
+                        st.session_state.start_time = time.time()
+                        st.session_state.end_time = st.session_state.start_time + (timer_duration * 60)
+                        st.session_state.test_saved = False  # Add this flag
+                        st.rerun()
+                    else:
+                        st.warning("No questions found for the selected criteria.")
+                except Exception as e:
+                    st.error(f"Error accessing database: {e}")
+
+        # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Display timer in the main content area
             time_left = max(st.session_state.end_time - time.time(), 0)
@@ -360,56 +363,54 @@ if authenticate_user():
                 st.session_state.test_completed = True
                 st.rerun()
 
-        # In your test completion section:
+        # Test completion and results
         if st.session_state.test_completed:
-            st.header("Test Completed")
-            score = 0
-            total_questions = len(st.session_state.test_questions)
-            detailed_results = []
-        
+            if not hasattr(st.session_state, 'test_saved') or not st.session_state.test_saved:
+                score = 0
+                total_questions = len(st.session_state.test_questions)
+                detailed_results = []
 
-            for i, question in enumerate(st.session_state.test_questions):
-                user_answer = st.session_state.user_answers.get(i, "")
-                correct_answer = question['ans']
-                if user_answer == correct_answer:
-                    score += 1
+                for i, question in enumerate(st.session_state.test_questions):
+                    user_answer = st.session_state.user_answers.get(i, "")
+                    correct_answer = question['ans']
+                    if user_answer == correct_answer:
+                        score += 1
                     
-                # For database storage
-                result_entry = {
-                    'question_num': i + 1,
-                    'user_answer': user_answer,
-                    'correct_answer': correct_answer,
-                    'subject': question['SUBJECT'],
-                    'chapter': question['CHAPTER'],
-                    'difficulty': question['DIFFICULTY']
-                }
-                detailed_results.append(result_entry)
+                    result_entry = {
+                        'question_num': i + 1,
+                        'user_answer': user_answer,
+                        'correct_answer': correct_answer,
+                        'subject': question['SUBJECT'],
+                        'chapter': question['CHAPTER'],
+                        'difficulty': question['DIFFICULTY']
+                    }
+                    detailed_results.append(result_entry)
+
+                # Calculate final score
+                final_score = score * 4
                 
+                # Save results only once
+                subjects = list(set(q['SUBJECT'] for q in st.session_state.test_questions))
+                chapters = list(set(q['CHAPTER'] for q in st.session_state.test_questions))
+                difficulties = list(set(q['DIFFICULTY'] for q in st.session_state.test_questions))
+                duration = int((st.session_state.end_time - st.session_state.start_time) / 60)
+                
+                if save_test_results(
+                    st.session_state["student_id"],
+                    final_score,
+                    total_questions,
+                    subjects,
+                    chapters,
+                    difficulties,
+                    duration,
+                ):
+                    st.session_state.test_saved = True
+                    st.success("Test results have been saved successfully!")
+                else:
+                    st.warning("There was an issue saving your test results.")
 
-            # Calculate final score
-            final_score = score * 4
-            
-            # 1. Save results to SQLite
-            subjects = list(set(q['SUBJECT'] for q in st.session_state.test_questions))
-            chapters = list(set(q['CHAPTER'] for q in st.session_state.test_questions))
-            difficulties = list(set(q['DIFFICULTY'] for q in st.session_state.test_questions))
-            duration = int((st.session_state.end_time - st.session_state.start_time) / 60)
-            
-            if save_test_results(
-                st.session_state["student_id"],
-                final_score,
-                total_questions,
-                subjects,
-                chapters,
-                difficulties,
-                duration,
-            ):
-                st.success("Test results have been saved successfully!")
-            else:
-                st.warning("There was an issue saving your test results.")
-
-
-            # 3. Display results on screen
+            # Display results
+            st.header("Test Completed")
             st.write(f"Your score: {final_score} out of {total_questions*4}")
 
             st.subheader("Detailed Results")
