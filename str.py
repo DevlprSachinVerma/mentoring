@@ -386,8 +386,9 @@ if authenticate_user():
                     }
                     detailed_results.append(result_entry)
 
-                # Calculate final score
-                final_score = score * 4
+                # Calculate final score and store in session state
+                st.session_state.final_score = score * 4
+                st.session_state.total_questions = total_questions
                 
                 # Save results only once
                 subjects = list(set(q['SUBJECT'] for q in st.session_state.test_questions))
@@ -397,12 +398,12 @@ if authenticate_user():
                 
                 if save_test_results(
                     st.session_state["student_id"],
-                    final_score,
-                    total_questions,
+                    st.session_state.final_score,
+                    st.session_state.total_questions,
                     subjects,
                     chapters,
                     difficulties,
-                    duration,
+                    duration
                 ):
                     st.session_state.test_saved = True
                     st.success("Test results have been saved successfully!")
@@ -411,7 +412,7 @@ if authenticate_user():
 
             # Display results
             st.header("Test Completed")
-            st.write(f"Your score: {final_score} out of {total_questions*4}")
+            st.write(f"Your score: {st.session_state.final_score} out of {st.session_state.total_questions*4}")
 
             st.subheader("Detailed Results")
             for i, question in enumerate(st.session_state.test_questions):
@@ -438,11 +439,15 @@ if authenticate_user():
                 
                 st.write("---")
 
-            # 4. Add button to start new test
+            # Add button to start new test
             if st.button("Start New Test"):
+                # Clear all test-related session state variables
                 st.session_state.test_questions = []
                 st.session_state.user_answers = {}
                 st.session_state.test_completed = False
                 st.session_state.start_time = None
                 st.session_state.end_time = None
+                st.session_state.final_score = None
+                st.session_state.total_questions = None
+                st.session_state.test_saved = False
                 st.rerun()
