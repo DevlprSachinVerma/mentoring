@@ -261,9 +261,9 @@ if authenticate_user():
         # Only show test creation form if no test is in progress
         if not st.session_state.test_questions:
             subject_chapters = {
-                "Math": ["Algebra", "Calculus", "Geometry"],
-                "Physics": ["Mechanics", "Optics", "Thermodynamics"],
-                "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry"]
+                "Math": [],
+                "Physics": ["Magnetism and Matter"],
+                "Chemistry": []
             }
 
             if 'available_chapters' not in st.session_state:
