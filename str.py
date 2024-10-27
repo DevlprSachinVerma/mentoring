@@ -96,7 +96,7 @@ def authenticate_user():
     if "authenticated" not in st.session_state:
         st.markdown(
             """
-            <h2 style='text-align: center; font-size: 40px;'>Hello, Welcoming to 
+            <h2 style='text-align: center; font-size: 40px;'>Hello, Welcome to 
             <span style='color: purple; font-size: 48px;'>Mentors Mantra!</span> 😄</h2>
             """,
             unsafe_allow_html=True
