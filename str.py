@@ -196,11 +196,12 @@ def display_timer_and_questions():
                 st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
                 if question['IMAGE']:
                     display_image(question['IMAGE'])
-                options = ['A', 'B', 'C', 'D']
+
+                # Ensure unique keys by appending the question index
                 user_answers = st.multiselect(
                     f"Select your answer(s) for Question {i + 1}:",
-                    options,
-                    key=f"q_{i}"
+                    ['A', 'B', 'C', 'D'],
+                    key=f"q_{i}_multiselect"
                 )
                 if user_answers:
                     st.session_state.user_answers[i] = "".join(sorted(user_answers))
