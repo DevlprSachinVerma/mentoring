@@ -73,6 +73,29 @@ def read_sql_query(sql, db):
     conn.close()
     return rows
 
+# Function to display the timer
+def display_timer():
+    time_left = max(st.session_state.end_time - time.time(), 0)
+    mins, secs = divmod(int(time_left), 60)
+    st.markdown(f"### ⏳ Time left: {mins:02d}:{secs:02d}")
+    return time_left
+
+# Function to display questions
+def display_questions():
+    total_q = len(st.session_state.test_questions)
+    for i, question in enumerate(st.session_state.test_questions):
+        st.subheader(f"Question {i + 1} of {total_q}")
+        st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+        if question['IMAGE']:
+            st.image(question['IMAGE'])
+        options = ['A', 'B', 'C', 'D']
+        st.multiselect(
+            f"Select your answer(s) for Question {i + 1}:",
+            options,
+            key=f"q_{i}"
+        )
+        st.write("---")
+
 # Function to display image from BLOB data
 def display_image(image_data):
     try:
@@ -321,55 +344,31 @@ if authenticate_user():
                 except Exception as e:
                     st.error(f"Error accessing database: {e}")
 
-        # Show test questions if test is in progress
-        if st.session_state.test_questions and not st.session_state.test_completed:
-            # Display timer in the main content area
-            timer_placeholder = st.empty()  # Create a dynamic placeholder for the timer
+        # Main content
+        if not st.session_state.test_completed:
+            # Timer and questions are updated dynamically
+            timer_placeholder = st.empty()
+            question_placeholder = st.container()
 
             while True:
-                # Calculate time left
-                time_left = max(st.session_state.end_time - time.time(), 0)
+                with timer_placeholder:
+                    time_left = display_timer()
 
-                # Format and display the time left
-                mins, secs = divmod(int(time_left), 60)
-                timer_placeholder.markdown(f"### ⏳ Time left: {mins:02d}:{secs:02d}")
+                with question_placeholder:
+                    display_questions()
 
                 # Check if time is up
                 if time_left <= 0:
                     st.session_state.test_completed = True
                     st.success("⏰ Time's up!")
-                    st.rerun()
                     break
 
-                # Sleep for 1 second before updating
                 time.sleep(1)
+                st.experimental_update()  # Force update the Streamlit UI dynamically
 
-            total_q = len(st.session_state.test_questions)
-
-            # Display questions
-            for i, question in enumerate(st.session_state.test_questions):
-                st.subheader(f"Question {i + 1} of {total_q}")
-                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
-
-                if question['IMAGE']:
-                    display_image(question['IMAGE'])
-
-                options = ['A', 'B', 'C', 'D']
-
-                user_answers = st.multiselect(
-                    f"Select your answer(s) for Question {i + 1}:",
-                    options,
-                    key=f"q_{i}"
-                )
-
-                if user_answers:
-                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
-
-                st.write("---")
-
-            if st.button("Submit Test"):
-                st.session_state.test_completed = True
-                st.rerun()
+        # Show a message after the test is completed
+        if st.session_state.test_completed:
+            st.success("Test completed. Thank you for participating!")
 
         # Test completion and results
         if st.session_state.test_completed:
