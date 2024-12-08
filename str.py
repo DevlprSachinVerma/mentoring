@@ -166,49 +166,8 @@ def get_student_performance(student_id):
     return results
 
 
-def display_timer_and_questions():
-    # Create placeholders for the timer and questions
-    timer_placeholder = st.empty()
-    question_placeholder = st.container()
 
-    # Timer logic
-    while True:
-        # Calculate remaining time
-        time_left = max(st.session_state.end_time - time.time(), 0)
-        minutes = int(time_left // 60)
-        seconds = int(time_left % 60)
 
-        # Update timer display
-        with timer_placeholder:
-            st.markdown(f"### ⏳ Time Remaining: {minutes:02d}:{seconds:02d}")
-
-        # Check if time is up
-        if time_left <= 0:
-            st.session_state.test_completed = True
-            st.success("⏰ Time's up! Submitting the test...")
-            st.stop()  # Stop further updates
-
-        # Display questions dynamically
-        with question_placeholder:
-            total_q = len(st.session_state.test_questions)
-            for i, question in enumerate(st.session_state.test_questions):
-                st.subheader(f"Question {i + 1} of {total_q}")
-                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
-                if question['IMAGE']:
-                    display_image(question['IMAGE'])
-
-                # Ensure unique keys by appending the question index
-                user_answers = st.multiselect(
-                    f"Select your answer(s) for Question {i + 1}:",
-                    ['A', 'B', 'C', 'D'],
-                    key=f"q_{i}_multiselect"
-                )
-                if user_answers:
-                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
-                st.write("---")
-
-        # Small delay to simulate real-time updates
-        time.sleep(1)
 
 
 if authenticate_user():
@@ -227,6 +186,8 @@ if authenticate_user():
     # Sidebar Navigation
     st.sidebar.header("")
     page = st.sidebar.radio("Go to", ["Chatbot", "Create Test", "View Performance"])
+
+    
 
     # Chatbot Interface
     if page == "Chatbot":
@@ -368,6 +329,48 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
+            def display_timer_and_questions():
+                # Create placeholders for the timer and questions
+                timer_placeholder = st.empty()
+                question_placeholder = st.container()
+
+                # Calculate remaining time
+                if "time_left" not in st.session_state:
+                    st.session_state.time_left = max(st.session_state.end_time - time.time(), 0)
+
+                # Display the timer
+                minutes = int(st.session_state.time_left // 60)
+                seconds = int(st.session_state.time_left % 60)
+                with timer_placeholder:
+                    st.markdown(f"### ⏳ Time Remaining: {minutes:02d}:{seconds:02d}")
+
+                # Check if time is up
+                if st.session_state.time_left <= 0:
+                    st.session_state.test_completed = True
+                    st.success("⏰ Time's up! Submitting the test...")
+                    return  # Stop further execution
+
+                # Display questions
+                with question_placeholder:
+                    total_q = len(st.session_state.test_questions)
+                    for i, question in enumerate(st.session_state.test_questions):
+                        st.subheader(f"Question {i + 1} of {total_q}")
+                        st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+                        if question['IMAGE']:
+                            display_image(question['IMAGE'])
+
+                        # Ensure unique keys for multiselect
+                        user_answers = st.multiselect(
+                            f"Select your answer(s) for Question {i + 1}:",
+                            options,
+                            key=f"q_{i}"
+                        )
+                        st.write("---")
+
+                # Decrease the time left and rerun the app
+                st.session_state.time_left -= 1
+                time.sleep(1)
+                st.rerun()
             display_timer_and_questions()
 
         # Test completion and results
