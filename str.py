@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from datetime import datetime
 import json
+import threading
 
 # Function to initialize the results database
 def init_results_db():
@@ -164,6 +165,45 @@ def get_student_performance(student_id):
     
     return results
 
+
+def create_dynamic_timer():
+    # Create an empty placeholder for the timer
+    timer_placeholder = st.empty()
+    
+    while time_left > 0:
+        # Calculate remaining time
+        time_left = max(st.session_state.end_time - time.time(), 0)
+        
+        # Format time display
+        minutes = int(time_left // 60)
+        seconds = int(time_left % 60)
+        
+        # Update timer display with color coding
+        if time_left > 60:  # More than 1 minute left
+            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
+                                     label_visibility="visible")
+        elif 10 < time_left <= 60:  # Between 10-60 seconds, show in yellow
+            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
+                                     label_visibility="visible", 
+                                     delta="Hurry Up!", 
+                                     delta_color="yellow")
+        else:  # Less than 10 seconds, show in red
+            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
+                                     label_visibility="visible", 
+                                     delta="FINAL MOMENTS!", 
+                                     delta_color="red")
+        
+        # Small delay to prevent excessive CPU usage
+        time.sleep(1)
+        
+        # Check if test is completed
+        if st.session_state.test_completed:
+            break
+    
+    # If timer runs out, automatically complete the test
+    if time_left <= 0:
+        st.session_state.test_completed = True
+        st.rerun()
 
 
 if authenticate_user():
@@ -323,13 +363,9 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            # Display timer in the main content area
-            time_left = max(st.session_state.end_time - time.time(), 0)
-            st.write(f"Time left: {int(time_left // 60)}:{int(time_left % 60):02d}")
-
-            if time_left <= 0:
-                st.session_state.test_completed = True
-                st.rerun()
+            # Start the dynamic timer in a separate thread
+            timer_thread = threading.Thread(target=create_dynamic_timer)
+            timer_thread.start()
 
             total_q = len(st.session_state.test_questions)
             
