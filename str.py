@@ -165,7 +165,66 @@ def get_student_performance(student_id):
     
     return results
 
+def create_timer_thread(end_time):
+    """
+    Create a thread to manage timer countdown
+    """
+    def timer_countdown():
+        while True:
+            # Calculate remaining time
+            st.session_state.time_left = max(end_time - time.time(), 0)
+            
+            # Check if time is up
+            if st.session_state.time_left <= 0:
+                st.session_state.test_completed = True
+                break
+            
+            time.sleep(1)  # Update every second
+    
+    # Create and start timer thread
+    timer_thread = threading.Thread(target=timer_countdown, daemon=True)
+    timer_thread.start()
 
+def display_timer_and_questions():
+    # Initialize time_left if not already set
+    if "time_left" not in st.session_state:
+        st.session_state.time_left = max(st.session_state.end_time - time.time(), 0)
+    
+    # Create placeholders for timer and questions
+    timer_placeholder = st.empty()
+    
+    # Display the timer
+    minutes = int(st.session_state.time_left // 60)
+    seconds = int(st.session_state.time_left % 60)
+    with timer_placeholder:
+        st.markdown(f"### ⏳ Time Remaining: {minutes:02d}:{seconds:02d}")
+    
+    # Check if time is up
+    if st.session_state.time_left <= 0:
+        st.session_state.test_completed = True
+        st.success("⏰ Time's up! Submitting the test...")
+        return
+    
+    # Display questions
+    total_q = len(st.session_state.test_questions)
+    for i, question in enumerate(st.session_state.test_questions):
+        st.subheader(f"Question {i + 1} of {total_q}")
+        st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+        
+        if question['IMAGE']:
+            display_image(question['IMAGE'])
+        
+        options = ['A', 'B', 'C', 'D']
+        user_answers = st.multiselect(
+            f"Select your answer(s) for Question {i + 1}:",
+            options,
+            key=f"q_{i}"
+        )
+        
+        # Store user answers in session state
+        st.session_state.user_answers[i] = ''.join(sorted(user_answers))
+        
+        st.write("---")
 
 
 
@@ -326,51 +385,11 @@ if authenticate_user():
                         st.warning("No questions found for the selected criteria.")
                 except Exception as e:
                     st.error(f"Error accessing database: {e}")
+                
+                create_timer_thread(st.session_state.end_time)
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            def display_timer_and_questions():
-                # Create placeholders for the timer and questions
-                timer_placeholder = st.empty()
-                question_placeholder = st.container()
-
-                # Calculate remaining time
-                if "time_left" not in st.session_state:
-                    st.session_state.time_left = max(st.session_state.end_time - time.time(), 0)
-
-                # Display the timer
-                minutes = int(st.session_state.time_left // 60)
-                seconds = int(st.session_state.time_left % 60)
-                with timer_placeholder:
-                    st.markdown(f"### ⏳ Time Remaining: {minutes:02d}:{seconds:02d}")
-
-                # Check if time is up
-                if st.session_state.time_left <= 0:
-                    st.session_state.test_completed = True
-                    st.success("⏰ Time's up! Submitting the test...")
-                    return  # Stop further execution
-
-                # Display questions
-                with question_placeholder:
-                    total_q = len(st.session_state.test_questions)
-                    for i, question in enumerate(st.session_state.test_questions):
-                        st.subheader(f"Question {i + 1} of {total_q}")
-                        st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
-                        if question['IMAGE']:
-                            display_image(question['IMAGE'])
-
-                        # Ensure unique keys for multiselect
-                        user_answers = st.multiselect(
-                            f"Select your answer(s) for Question {i + 1}:",
-                            options,
-                            key=f"q_{i}"
-                        )
-                        st.write("---")
-
-                # Decrease the time left and rerun the app
-                st.session_state.time_left -= 1
-                time.sleep(1)
-                st.rerun()
             display_timer_and_questions()
 
         # Test completion and results
