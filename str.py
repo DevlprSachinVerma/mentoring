@@ -364,7 +364,7 @@ if authenticate_user():
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Start the dynamic timer in a separate thread
-            timer_thread = threading.Thread(target=create_dynamic_timer)
+            timer_thread = threading.Thread(target=create_dynamic_timer, daemon=True)
             timer_thread.start()
 
             total_q = len(st.session_state.test_questions)
