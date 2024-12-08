@@ -166,44 +166,48 @@ def get_student_performance(student_id):
     return results
 
 
-def create_dynamic_timer():
-    # Create an empty placeholder for the timer
+def display_timer_and_questions():
+    # Create placeholders for the timer and questions
     timer_placeholder = st.empty()
-    
-    while time_left > 0:
+    question_placeholder = st.container()
+
+    # Timer logic
+    while True:
         # Calculate remaining time
         time_left = max(st.session_state.end_time - time.time(), 0)
-        
-        # Format time display
         minutes = int(time_left // 60)
         seconds = int(time_left % 60)
-        
-        # Update timer display with color coding
-        if time_left > 60:  # More than 1 minute left
-            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
-                                     label_visibility="visible")
-        elif 10 < time_left <= 60:  # Between 10-60 seconds, show in yellow
-            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
-                                     label_visibility="visible", 
-                                     delta="Hurry Up!", 
-                                     delta_color="yellow")
-        else:  # Less than 10 seconds, show in red
-            timer_placeholder.metric("Time Remaining", f"{minutes:02d}:{seconds:02d}", 
-                                     label_visibility="visible", 
-                                     delta="FINAL MOMENTS!", 
-                                     delta_color="red")
-        
-        # Small delay to prevent excessive CPU usage
+
+        # Update timer display
+        with timer_placeholder:
+            st.markdown(f"### ⏳ Time Remaining: {minutes:02d}:{seconds:02d}")
+
+        # Check if time is up
+        if time_left <= 0:
+            st.session_state.test_completed = True
+            st.success("⏰ Time's up! Submitting the test...")
+            st.stop()  # Stop further updates
+
+        # Display questions dynamically
+        with question_placeholder:
+            total_q = len(st.session_state.test_questions)
+            for i, question in enumerate(st.session_state.test_questions):
+                st.subheader(f"Question {i + 1} of {total_q}")
+                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+                if question['IMAGE']:
+                    display_image(question['IMAGE'])
+                options = ['A', 'B', 'C', 'D']
+                user_answers = st.multiselect(
+                    f"Select your answer(s) for Question {i + 1}:",
+                    options,
+                    key=f"q_{i}"
+                )
+                if user_answers:
+                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
+                st.write("---")
+
+        # Small delay to simulate real-time updates
         time.sleep(1)
-        
-        # Check if test is completed
-        if st.session_state.test_completed:
-            break
-    
-    # If timer runs out, automatically complete the test
-    if time_left <= 0:
-        st.session_state.test_completed = True
-        st.rerun()
 
 
 if authenticate_user():
@@ -363,41 +367,7 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            # Start the dynamic timer in a separate thread
-            timer_thread = threading.Thread(target=create_dynamic_timer, daemon=True)
-            timer_thread.start()
-
-            total_q = len(st.session_state.test_questions)
-            
-            for i, question in enumerate(st.session_state.test_questions):
-                st.subheader(f"Question {i + 1} of {total_q}")
-                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
-
-                if question['IMAGE']:
-                    display_image(question['IMAGE'])
-
-                options = [
-                    'A',
-                    'B',
-                    'C',
-                    'D'
-                ]
-                
-                user_answers = st.multiselect(
-                    f"Select your answer(s) for Question {i+1}:",
-                    options,
-                    format_func=lambda x: f"{x}",
-                    key=f"q_{i}"
-                )
-                
-                if user_answers:
-                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
-
-                st.write("---")
-
-            if st.button("Submit Test"):
-                st.session_state.test_completed = True
-                st.rerun()
+            display_timer_and_questions()
 
         # Test completion and results
         if st.session_state.test_completed:
