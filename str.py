@@ -324,15 +324,29 @@ if authenticate_user():
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Display timer in the main content area
-            time_left = max(st.session_state.end_time - time.time(), 0)
-            st.write(f"Time left: {int(time_left // 60)}:{int(time_left % 60):02d}")
+            timer_placeholder = st.empty()  # Create a dynamic placeholder for the timer
 
-            if time_left <= 0:
-                st.session_state.test_completed = True
-                st.rerun()
+            while True:
+                # Calculate time left
+                time_left = max(st.session_state.end_time - time.time(), 0)
+
+                # Format and display the time left
+                mins, secs = divmod(int(time_left), 60)
+                timer_placeholder.markdown(f"### ⏳ Time left: {mins:02d}:{secs:02d}")
+
+                # Check if time is up
+                if time_left <= 0:
+                    st.session_state.test_completed = True
+                    st.success("⏰ Time's up!")
+                    st.rerun()
+                    break
+
+                # Sleep for 1 second before updating
+                time.sleep(1)
 
             total_q = len(st.session_state.test_questions)
-            
+
+            # Display questions
             for i, question in enumerate(st.session_state.test_questions):
                 st.subheader(f"Question {i + 1} of {total_q}")
                 st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
@@ -340,20 +354,14 @@ if authenticate_user():
                 if question['IMAGE']:
                     display_image(question['IMAGE'])
 
-                options = [
-                    'A',
-                    'B',
-                    'C',
-                    'D'
-                ]
-                
+                options = ['A', 'B', 'C', 'D']
+
                 user_answers = st.multiselect(
-                    f"Select your answer(s) for Question {i+1}:",
+                    f"Select your answer(s) for Question {i + 1}:",
                     options,
-                    format_func=lambda x: f"{x}",
                     key=f"q_{i}"
                 )
-                
+
                 if user_answers:
                     st.session_state.user_answers[i] = "".join(sorted(user_answers))
 
