@@ -165,67 +165,98 @@ def get_student_performance(student_id):
     
     return results
 
-def create_dynamic_timer(duration_minutes):
+class StreamlitTimer:
+    def __init__(self, duration_minutes):
+        """
+        Initialize a timer for a given duration
+        
+        Args:
+            duration_minutes (int): Total test duration in minutes
+        """
+        self.duration = timedelta(minutes=duration_minutes)
+        self.start_time = datetime.now()
+        self.timer_placeholder = st.empty()
+        self.stop_timer = False
+        
+    def format_timer(self, remaining_time):
+        """
+        Format remaining time with color coding
+        
+        Args:
+            remaining_time (timedelta): Time left in the timer
+        
+        Returns:
+            str: Formatted HTML string for timer display
+        """
+        minutes, seconds = divmod(int(remaining_time.total_seconds()), 60)
+        
+        # Color selection logic
+        if minutes <= 5:
+            color = "red"
+        elif minutes <= 10:
+            color = "orange"
+        else:
+            color = "green"
+        
+        return f"""
+        <div style='background-color:{color}; 
+                    color:white; 
+                    padding:10px; 
+                    border-radius:5px; 
+                    text-align:center; 
+                    font-size:20px;'>
+        ⏰ Time Remaining: {minutes:02d}:{seconds:02d}
+        </div>
+        """
+    
+    def start(self):
+        """
+        Start the timer thread
+        """
+        def timer_thread():
+            while not self.stop_timer:
+                current_time = datetime.now()
+                elapsed_time = current_time - self.start_time
+                remaining_time = max(self.duration - elapsed_time, timedelta())
+                
+                if remaining_time.total_seconds() <= 0:
+                    self.timer_placeholder.warning("Time's up! Test will be automatically submitted.")
+                    st.session_state.test_completed = True
+                    st.experimental_rerun()
+                    break
+                
+                # Update timer display
+                self.timer_placeholder.markdown(self.format_timer(remaining_time), 
+                                                unsafe_allow_html=True)
+                time.sleep(1)  # Update every second
+        
+        # Start the timer in a separate thread
+        timer_thread = threading.Thread(target=timer_thread, daemon=True)
+        timer_thread.start()
+        
+    def stop(self):
+        """
+        Stop the timer
+        """
+        self.stop_timer = True
+
+# Example Usage in Streamlit
+def setup_timer(duration_minutes):
     """
-    Create a dynamic timer that tracks remaining time more accurately.
+    Setup and start a timer for the test
     
     Args:
-        duration_minutes (int): Total test duration in minutes
+        duration_minutes (int): Test duration in minutes
     
     Returns:
-        tuple: A dictionary of timer state and a function to update the timer
+        StreamlitTimer: Initialized timer object
     """
-    # Initialize timer state if not already present
-    if 'timer_state' not in st.session_state:
-        st.session_state.timer_state = {
-            'start_time': datetime.now(),
-            'duration': timedelta(minutes=duration_minutes),
-            'is_running': True
-        }
+    # Check if timer is already initialized
+    if 'test_timer' not in st.session_state:
+        st.session_state.test_timer = StreamlitTimer(duration_minutes)
+        st.session_state.test_timer.start()
     
-    def update_timer():
-        """Update the timer state and check if time is up."""
-        current_time = datetime.now()
-        elapsed_time = current_time - st.session_state.timer_state['start_time']
-        
-        # Check if time is up
-        if elapsed_time >= st.session_state.timer_state['duration']:
-            st.session_state.timer_state['is_running'] = False
-            return False
-        
-        # Calculate remaining time
-        remaining_time = st.session_state.timer_state['duration'] - elapsed_time
-        return remaining_time
-    
-    def display_timer():
-        """Display the remaining time in the Streamlit app."""
-        remaining_time = update_timer()
-        
-        if not remaining_time or not st.session_state.timer_state['is_running']:
-            st.warning("Time's up! Test will be automatically submitted.")
-            st.session_state.test_completed = True
-            st.rerun()
-        
-        # Style the timer
-        remaining_minutes = remaining_time.seconds // 60
-        remaining_seconds = remaining_time.seconds % 60
-        
-        # Color code the timer based on remaining time
-        if remaining_minutes <= 5:
-            timer_color = "red"
-        elif remaining_minutes <= 10:
-            timer_color = "orange"
-        else:
-            timer_color = "green"
-        
-        st.markdown(f"""
-        <div style='background-color:{timer_color}; color:white; 
-        padding:10px; border-radius:5px; text-align:center; font-size:20px;'>
-        ⏰ Time Remaining: {remaining_minutes:02d}:{remaining_seconds:02d}
-        </div>
-        """, unsafe_allow_html=True)
-    
-    return display_timer
+    return st.session_state.test_timer
 
 
 
@@ -350,6 +381,7 @@ if authenticate_user():
             submit_test = st.button("Create Test")
 
             if submit_test:
+                setup_timer(timer_duration)
                 st.write("Creating test...")
                 
                 subjects = st.session_state.get('selected_subjects', [])
@@ -384,13 +416,11 @@ if authenticate_user():
                 except Exception as e:
                     st.error(f"Error accessing database: {e}")
 
-                display_dynamic_timer = create_dynamic_timer(timer_duration)
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Display timer in the main content area
-            display_dynamic_timer = create_dynamic_timer(timer_duration)
-            display_dynamic_timer()
+            
 
             total_q = len(st.session_state.test_questions)
             
