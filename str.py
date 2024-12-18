@@ -9,7 +9,7 @@ from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
 from groq import Groq
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import threading
 
@@ -165,7 +165,67 @@ def get_student_performance(student_id):
     
     return results
 
-
+def create_dynamic_timer(duration_minutes):
+    """
+    Create a dynamic timer that tracks remaining time more accurately.
+    
+    Args:
+        duration_minutes (int): Total test duration in minutes
+    
+    Returns:
+        tuple: A dictionary of timer state and a function to update the timer
+    """
+    # Initialize timer state if not already present
+    if 'timer_state' not in st.session_state:
+        st.session_state.timer_state = {
+            'start_time': datetime.now(),
+            'duration': timedelta(minutes=duration_minutes),
+            'is_running': True
+        }
+    
+    def update_timer():
+        """Update the timer state and check if time is up."""
+        current_time = datetime.now()
+        elapsed_time = current_time - st.session_state.timer_state['start_time']
+        
+        # Check if time is up
+        if elapsed_time >= st.session_state.timer_state['duration']:
+            st.session_state.timer_state['is_running'] = False
+            return False
+        
+        # Calculate remaining time
+        remaining_time = st.session_state.timer_state['duration'] - elapsed_time
+        return remaining_time
+    
+    def display_timer():
+        """Display the remaining time in the Streamlit app."""
+        remaining_time = update_timer()
+        
+        if not remaining_time or not st.session_state.timer_state['is_running']:
+            st.warning("Time's up! Test will be automatically submitted.")
+            st.session_state.test_completed = True
+            st.rerun()
+        
+        # Style the timer
+        remaining_minutes = remaining_time.seconds // 60
+        remaining_seconds = remaining_time.seconds % 60
+        
+        # Color code the timer based on remaining time
+        if remaining_minutes <= 5:
+            timer_color = "red"
+        elif remaining_minutes <= 10:
+            timer_color = "orange"
+        else:
+            timer_color = "green"
+        
+        st.markdown(f"""
+        <div style='background-color:{timer_color}; color:white; 
+        padding:10px; border-radius:5px; text-align:center; font-size:20px;'>
+        ⏰ Time Remaining: {remaining_minutes:02d}:{remaining_seconds:02d}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    return display_timer
 
 
 
@@ -324,15 +384,12 @@ if authenticate_user():
                 except Exception as e:
                     st.error(f"Error accessing database: {e}")
 
+                display_dynamic_timer = create_dynamic_timer(timer_duration)
+
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Display timer in the main content area
-            time_left = max(st.session_state.end_time - time.time(), 0)
-            st.write(f"Time left: {int(time_left // 60)}:{int(time_left % 60):02d}")
-
-            if time_left <= 0:
-                st.session_state.test_completed = True
-                st.rerun()
+            display_dynamic_timer()
 
             total_q = len(st.session_state.test_questions)
             
