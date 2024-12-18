@@ -389,6 +389,7 @@ if authenticate_user():
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
             # Display timer in the main content area
+            display_dynamic_timer = create_dynamic_timer(timer_duration)
             display_dynamic_timer()
 
             total_q = len(st.session_state.test_questions)
