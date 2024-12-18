@@ -12,6 +12,8 @@ from groq import Groq
 from datetime import datetime, timedelta
 import json
 import threading
+from streamlit_extras.switch_page_button import switch_page
+from streamlit_extras.timer import Timer
 
 # Function to initialize the results database
 def init_results_db():
@@ -165,98 +167,21 @@ def get_student_performance(student_id):
     
     return results
 
-class StreamlitTimer:
-    def __init__(self, duration_minutes):
-        """
-        Initialize a timer for a given duration
-        
-        Args:
-            duration_minutes (int): Total test duration in minutes
-        """
-        self.duration = timedelta(minutes=duration_minutes)
-        self.start_time = datetime.now()
-        self.timer_placeholder = st.empty()
-        self.stop_timer = False
-        
-    def format_timer(self, remaining_time):
-        """
-        Format remaining time with color coding
-        
-        Args:
-            remaining_time (timedelta): Time left in the timer
-        
-        Returns:
-            str: Formatted HTML string for timer display
-        """
-        minutes, seconds = divmod(int(remaining_time.total_seconds()), 60)
-        
-        # Color selection logic
-        if minutes <= 5:
-            color = "red"
-        elif minutes <= 10:
-            color = "orange"
-        else:
-            color = "green"
-        
-        return f"""
-        <div style='background-color:{color}; 
-                    color:white; 
-                    padding:10px; 
-                    border-radius:5px; 
-                    text-align:center; 
-                    font-size:20px;'>
-        ⏰ Time Remaining: {minutes:02d}:{seconds:02d}
-        </div>
-        """
-    
-    def start(self):
-        """
-        Start the timer thread
-        """
-        def timer_thread():
-            while not self.stop_timer:
-                current_time = datetime.now()
-                elapsed_time = current_time - self.start_time
-                remaining_time = max(self.duration - elapsed_time, timedelta())
-                
-                if remaining_time.total_seconds() <= 0:
-                    self.timer_placeholder.warning("Time's up! Test will be automatically submitted.")
-                    st.session_state.test_completed = True
-                    st.experimental_rerun()
-                    break
-                
-                # Update timer display
-                self.timer_placeholder.markdown(self.format_timer(remaining_time), 
-                                                unsafe_allow_html=True)
-                time.sleep(1)  # Update every second
-        
-        # Start the timer in a separate thread
-        timer_thread = threading.Thread(target=timer_thread, daemon=True)
-        timer_thread.start()
-        
-    def stop(self):
-        """
-        Stop the timer
-        """
-        self.stop_timer = True
-
-# Example Usage in Streamlit
-def setup_timer(duration_minutes):
+def create_test_timer(duration_minutes):
     """
-    Setup and start a timer for the test
+    Create a timer using streamlit-extras
     
     Args:
-        duration_minutes (int): Test duration in minutes
-    
-    Returns:
-        StreamlitTimer: Initialized timer object
+        duration_minutes (int): Total test duration in minutes
     """
-    # Check if timer is already initialized
-    if 'test_timer' not in st.session_state:
-        st.session_state.test_timer = StreamlitTimer(duration_minutes)
-        st.session_state.test_timer.start()
+    # Create a timer
+    timer = Timer(duration_minutes * 60, text="⏰ Time Remaining")
     
-    return st.session_state.test_timer
+    # When timer expires
+    if timer.is_expired():
+        st.warning("Time's up! Test will be automatically submitted.")
+        st.session_state.test_completed = True
+        st.rerun()
 
 
 
@@ -381,7 +306,7 @@ if authenticate_user():
             submit_test = st.button("Create Test")
 
             if submit_test:
-                setup_timer(timer_duration)
+                create_test_timer(timer_duration)
                 st.write("Creating test...")
                 
                 subjects = st.session_state.get('selected_subjects', [])
