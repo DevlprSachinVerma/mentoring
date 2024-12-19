@@ -10,10 +10,9 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 from datetime import datetime, timedelta
+import streamlit.components.v1 as components
 import json
 import threading
-from streamlit_extras.switch_page_button import switch_page
-from streamlit_extras.timer import Timer
 
 # Function to initialize the results database
 def init_results_db():
@@ -167,23 +166,42 @@ def get_student_performance(student_id):
     
     return results
 
-def create_test_timer(duration_minutes):
+# Add this function to display the dynamic timer
+def display_timer(duration_minutes):
+    timer_html = f"""
+    <script>
+    function startTimer(duration) {{
+        let timer = duration, minutes, seconds;
+        let display = document.getElementById('timer');
+        let interval = setInterval(function () {{
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+            display.textContent = minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
+            if (--timer < 0) {{
+                clearInterval(interval);
+                display.textContent = "Time's up!";
+                window.dispatchEvent(new Event('timeUp'));
+            }}
+        }}, 1000);
+    }}
+    document.addEventListener("DOMContentLoaded", function() {{
+        startTimer({duration_minutes * 60});
+    }});
+    </script>
+    <div style="font-size: 24px; color: red; font-weight: bold;" id="timer">{duration_minutes}:00</div>
     """
-    Create a timer using streamlit-extras
-    
-    Args:
-        duration_minutes (int): Total test duration in minutes
-    """
-    # Create a timer
-    timer = Timer(duration_minutes * 60, text="⏰ Time Remaining")
-    
-    # When timer expires
-    if timer.is_expired():
-        st.warning("Time's up! Test will be automatically submitted.")
-        st.session_state.test_completed = True
-        st.rerun()
+    components.html(timer_html, height=50)
 
-
+# Add JavaScript event listener for timer completion
+def add_timer_listener():
+    components.html("""
+    <script>
+    window.addEventListener('timeUp', function() {
+        // Use Streamlit's postMessage to communicate with Python
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
+    });
+    </script>
+    """, height=0)
 
 if authenticate_user():
     # Initialize session state variables
@@ -306,7 +324,6 @@ if authenticate_user():
             submit_test = st.button("Create Test")
 
             if submit_test:
-                create_test_timer(timer_duration)
                 st.write("Creating test...")
                 
                 subjects = st.session_state.get('selected_subjects', [])
@@ -344,8 +361,20 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            # Display timer in the main content area
+            duration_minutes = int((st.session_state.end_time - st.session_state.start_time) / 60)
             
+            # Display the dynamic timer
+            display_timer(duration_minutes)
+            add_timer_listener()
+            
+            # Auto-submit when timer ends
+            if 'timer_expired' not in st.session_state:
+                st.session_state.timer_expired = False
+                
+            if st.session_state.timer_expired:
+                st.session_state.test_completed = True
+                st.rerun()
+
 
             total_q = len(st.session_state.test_questions)
             
