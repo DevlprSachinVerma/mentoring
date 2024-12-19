@@ -168,43 +168,53 @@ def get_student_performance(student_id):
 
 def display_timer(duration_minutes, key="timer"):
     timer_html = f"""
-    <script>
-    function startTimer(duration) {{
-        let timer = duration;
-        let minutes, seconds;
-        let display = document.getElementById('timer');
+        <div style="font-size: 24px; color: red; font-weight: bold; text-align: center;" id="timer">{duration_minutes}:00</div>
         
-        function updateDisplay() {{
-            minutes = parseInt(timer / 60, 10);
-            seconds = parseInt(timer % 60, 10);
-            display.textContent = minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
+        <script>
+            var duration = {duration_minutes * 60};
+            var timer = duration;
+            var minutes, seconds;
+            var display = document.getElementById('timer');
             
-            if (timer <= 0) {{
-                clearInterval(interval);
-                display.textContent = "Time's up!";
-                // Submit the form
-                const submitButton = document.querySelector('button[kind="primaryFormSubmit"]');
-                if (submitButton) {{
-                    submitButton.click();
+            function updateDisplay() {{
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+                
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                
+                display.textContent = minutes + ":" + seconds;
+                
+                if (timer <= 0) {{
+                    display.textContent = "Time's up!";
+                    // Find and click the submit button
+                    const buttons = parent.document.getElementsByTagName('button');
+                    for (let button of buttons) {{
+                        if (button.innerText === 'Submit Test') {{
+                            button.click();
+                            break;
+                        }}
+                    }}
+                    clearInterval(timerInterval);
                 }}
+                // Add warning colors when time is running low
+                if (timer <= 60) {{  // Last minute
+                    display.style.color = '#FF0000';  // Bright red
+                    if (timer <= 10) {{  // Last 10 seconds
+                        display.style.fontSize = timer % 2 ? '26px' : '24px';  // Pulsing effect
+                    }}
+                }}
+                timer = timer - 1;
             }}
-            timer = timer - 1;
-        }}
-        
-        // Initial display
-        updateDisplay();
-        // Update the display every second
-        let interval = setInterval(updateDisplay, 1000);
-    }}
-    
-    // Start timer when document is loaded
-    document.addEventListener("DOMContentLoaded", function() {{
-        startTimer({duration_minutes * 60});
-    }});
-    </script>
-    <div style="font-size: 24px; color: red; font-weight: bold;" id="timer">{duration_minutes}:00</div>
+            
+            // Initial call to display initial time
+            updateDisplay();
+            
+            // Update every second
+            var timerInterval = setInterval(updateDisplay, 1000);
+        </script>
     """
-    components.html(timer_html, height=50, key=key)
+    components.html(timer_html, height=70)
 
 if authenticate_user():
     # Initialize session state variables
@@ -366,9 +376,16 @@ if authenticate_user():
         if st.session_state.test_questions and not st.session_state.test_completed:
             duration_minutes = int((st.session_state.end_time - st.session_state.start_time) / 60)
             
-            # Display the dynamic timer
-            display_timer(duration_minutes)
+            # Create columns for timer and test progress
+            col1, col2 = st.columns([1, 4])
             
+            with col1:
+                # Display the timer
+                display_timer(duration_minutes)
+            
+            with col2:
+                st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
+
             # Wrap the questions in a form
             with st.form(key="test_form"):
                 total_q = len(st.session_state.test_questions)
