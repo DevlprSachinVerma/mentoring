@@ -166,42 +166,45 @@ def get_student_performance(student_id):
     
     return results
 
-# Add this function to display the dynamic timer
-def display_timer(duration_minutes):
+def display_timer(duration_minutes, key="timer"):
     timer_html = f"""
     <script>
     function startTimer(duration) {{
-        let timer = duration, minutes, seconds;
+        let timer = duration;
+        let minutes, seconds;
         let display = document.getElementById('timer');
-        let interval = setInterval(function () {{
+        
+        function updateDisplay() {{
             minutes = parseInt(timer / 60, 10);
             seconds = parseInt(timer % 60, 10);
             display.textContent = minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
-            if (--timer < 0) {{
+            
+            if (timer <= 0) {{
                 clearInterval(interval);
                 display.textContent = "Time's up!";
-                window.dispatchEvent(new Event('timeUp'));
+                // Submit the form
+                const submitButton = document.querySelector('button[kind="primaryFormSubmit"]');
+                if (submitButton) {{
+                    submitButton.click();
+                }}
             }}
-        }}, 1000);
+            timer = timer - 1;
+        }}
+        
+        // Initial display
+        updateDisplay();
+        // Update the display every second
+        let interval = setInterval(updateDisplay, 1000);
     }}
+    
+    // Start timer when document is loaded
     document.addEventListener("DOMContentLoaded", function() {{
         startTimer({duration_minutes * 60});
     }});
     </script>
     <div style="font-size: 24px; color: red; font-weight: bold;" id="timer">{duration_minutes}:00</div>
     """
-    components.html(timer_html, height=50)
-
-# Add JavaScript event listener for timer completion
-def add_timer_listener():
-    components.html("""
-    <script>
-    window.addEventListener('timeUp', function() {
-        // Use Streamlit's postMessage to communicate with Python
-        window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
-    });
-    </script>
-    """, height=0)
+    components.html(timer_html, height=50, key=key)
 
 if authenticate_user():
     # Initialize session state variables
@@ -365,48 +368,36 @@ if authenticate_user():
             
             # Display the dynamic timer
             display_timer(duration_minutes)
-            add_timer_listener()
             
-            # Auto-submit when timer ends
-            if 'timer_expired' not in st.session_state:
-                st.session_state.timer_expired = False
+            # Wrap the questions in a form
+            with st.form(key="test_form"):
+                total_q = len(st.session_state.test_questions)
                 
-            if st.session_state.timer_expired:
-                st.session_state.test_completed = True
-                st.rerun()
+                for i, question in enumerate(st.session_state.test_questions):
+                    st.subheader(f"Question {i + 1} of {total_q}")
+                    st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
 
+                    if question['IMAGE']:
+                        display_image(question['IMAGE'])
 
-            total_q = len(st.session_state.test_questions)
-            
-            for i, question in enumerate(st.session_state.test_questions):
-                st.subheader(f"Question {i + 1} of {total_q}")
-                st.write(f"Subject: {question['SUBJECT']}, Chapter: {question['CHAPTER']}, Difficulty: {question['DIFFICULTY']}")
+                    options = ['A', 'B', 'C', 'D']
+                    
+                    user_answers = st.multiselect(
+                        f"Select your answer(s) for Question {i+1}:",
+                        options,
+                        format_func=lambda x: f"{x}",
+                        key=f"q_{i}"
+                    )
+                    
+                    if user_answers:
+                        st.session_state.user_answers[i] = "".join(sorted(user_answers))
 
-                if question['IMAGE']:
-                    display_image(question['IMAGE'])
+                    st.write("---")
 
-                options = [
-                    'A',
-                    'B',
-                    'C',
-                    'D'
-                ]
-                
-                user_answers = st.multiselect(
-                    f"Select your answer(s) for Question {i+1}:",
-                    options,
-                    format_func=lambda x: f"{x}",
-                    key=f"q_{i}"
-                )
-                
-                if user_answers:
-                    st.session_state.user_answers[i] = "".join(sorted(user_answers))
-
-                st.write("---")
-
-            if st.button("Submit Test"):
-                st.session_state.test_completed = True
-                st.rerun()
+                # Submit button inside the form
+                if st.form_submit_button("Submit Test"):
+                    st.session_state.test_completed = True
+                    st.rerun()
 
         # Test completion and results
         if st.session_state.test_completed:
