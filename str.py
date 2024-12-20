@@ -214,7 +214,10 @@ def display_timer(duration_minutes, key="timer"):
         var timerInterval = setInterval(updateDisplay, 1000);
     </script>
     """
-    components.html(timer_html, height=70, key=key)
+    
+    # Instead of using components.html(), we'll use st.markdown() with unsafe_allow_html=True
+    st.markdown(timer_html, unsafe_allow_html=True)
+
 
 
 if authenticate_user():
