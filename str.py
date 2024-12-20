@@ -166,6 +166,8 @@ def get_student_performance(student_id):
     
     return results
 
+
+
 def display_timer(duration_minutes, key="timer"):
     timer_html = f"""
     <div style="font-size: 24px; color: red; font-weight: bold; text-align: center;" id="timer">{duration_minutes}:00</div>
@@ -215,19 +217,6 @@ def display_timer(duration_minutes, key="timer"):
     </script>
     """
     st.markdown(timer_html, unsafe_allow_html=True)
-
-
-
-
-
-def update_timer(duration_minutes):
-    st.session_state.timer_container.empty()
-    with st.session_state.timer_container:
-        display_timer(duration_minutes)
-
-
-
-
 
 
 
@@ -396,9 +385,11 @@ if authenticate_user():
             
             with col1:
                 # Display the timer
-                st.session_state.timer_container = st.container()
-                with st.session_state.timer_container:
-                    display_timer(duration_minutes)
+                with st.container():
+                    current_time = time.time()
+                    elapsed_time = current_time - st.session_state.start_time
+                    remaining_time = max(0, st.session_state.end_time - current_time)
+                    display_timer(remaining_time)
             
             with col2:
                 st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
