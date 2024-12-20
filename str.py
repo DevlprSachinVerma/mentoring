@@ -168,51 +168,53 @@ def get_student_performance(student_id):
 
 def display_timer(duration_minutes, key="timer"):
     timer_html = f"""
-        <div style="font-size: 24px; color: red; font-weight: bold; text-align: center;" id="timer">{duration_minutes}:00</div>
+    <div style="font-size: 24px; color: red; font-weight: bold; text-align: center;" id="timer">{duration_minutes}:00</div>
+    
+    <script>
+        var duration = {duration_minutes * 60};
+        var timer = duration;
+        var minutes, seconds;
+        var display = document.getElementById('timer');
         
-        <script>
-            var duration = {duration_minutes * 60};
-            var timer = duration;
-            var minutes, seconds;
-            var display = document.getElementById('timer');
+        function updateDisplay() {{
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
             
-            function updateDisplay() {{
-                minutes = parseInt(timer / 60, 10);
-                seconds = parseInt(timer % 60, 10);
-                
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-                
-                display.textContent = minutes + ":" + seconds;
-                
-                if (timer <= 0) {{
-                    display.textContent = "Time's up!";
-                    clearInterval(timerInterval);
-                    // Automatically submit the test when time is up
-                    const buttons = parent.document.getElementsByTagName('button');
-                    for (let button of buttons) {{
-                        if (button.innerText === 'Submit Test') {{
-                            button.click();
-                            break;
-                        }}
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+            
+            display.textContent = minutes + ":" + seconds;
+            
+            if (timer <= 0) {{
+                display.textContent = "Time's up!";
+                // Find and click the submit button
+                const buttons = parent.document.getElementsByTagName('button');
+                for (let button of buttons) {{
+                    if (button.innerText === 'Submit Test') {{
+                        button.click();
+                        break;
                     }}
                 }}
-                
-                // Add warning colors when time is running low
-                if (timer <= 60) {{  // Last minute
-                    display.style.color = '#FF0000';  // Bright red
-                }}
-                timer = timer - 1;
+                clearInterval(timerInterval);
             }}
-            
-            // Initial call to display initial time
-            updateDisplay();
-            
-            // Update every second
-            var timerInterval = setInterval(updateDisplay, 1000);
-        </script>
+            // Add warning colors when time is running low
+            if (timer <= 60) {{  // Last minute
+                display.style.color = '#FF0000';  // Bright red
+                if (timer <= 10) {{  // Last 10 seconds
+                    display.style.fontSize = timer % 2 ? '26px' : '24px';  // Pulsing effect
+                }}
+            }}
+            timer = timer - 1;
+        }}
+        
+        // Initial call to display initial time
+        updateDisplay();
+        
+        // Update every second
+        var timerInterval = setInterval(updateDisplay, 1000);
+    </script>
     """
-    components.html(timer_html, height=70)
+    components.html(timer_html, height=70, key=key)
 
 
 if authenticate_user():
@@ -380,7 +382,8 @@ if authenticate_user():
             
             with col1:
                 # Display the timer
-                display_timer(duration_minutes)
+                with st.container():
+                    display_timer(duration_minutes)
             
             with col2:
                 st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
