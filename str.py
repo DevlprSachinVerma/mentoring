@@ -214,9 +214,14 @@ def display_timer(duration_minutes, key="timer"):
         var timerInterval = setInterval(updateDisplay, 1000);
     </script>
     """
-    
-    # Instead of using components.html(), we'll use st.markdown() with unsafe_allow_html=True
     st.markdown(timer_html, unsafe_allow_html=True)
+
+
+def update_timer(duration_minutes):
+    st.session_state.timer_container.empty()
+    st.session_state.timer_container.display_timer(duration_minutes)
+
+
 
 
 
@@ -385,8 +390,9 @@ if authenticate_user():
             
             with col1:
                 # Display the timer
-                with st.container():
-                    display_timer(duration_minutes)
+                st.session_state.timer_container = st.container()
+                st.session_state.timer_container.markdown("", unsafe_allow_html=True)
+                st.session_state.timer_container.update_timer(duration_minutes)
             
             with col2:
                 st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
