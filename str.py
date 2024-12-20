@@ -187,7 +187,8 @@ def display_timer(duration_minutes, key="timer"):
                 
                 if (timer <= 0) {{
                     display.textContent = "Time's up!";
-                    // Find and click the submit button
+                    clearInterval(timerInterval);
+                    // Automatically submit the test when time is up
                     const buttons = parent.document.getElementsByTagName('button');
                     for (let button of buttons) {{
                         if (button.innerText === 'Submit Test') {{
@@ -195,14 +196,11 @@ def display_timer(duration_minutes, key="timer"):
                             break;
                         }}
                     }}
-                    clearInterval(timerInterval);
                 }}
+                
                 // Add warning colors when time is running low
                 if (timer <= 60) {{  // Last minute
                     display.style.color = '#FF0000';  // Bright red
-                    if (timer <= 10) {{  // Last 10 seconds
-                        display.style.fontSize = timer % 2 ? '26px' : '24px';  // Pulsing effect
-                    }}
                 }}
                 timer = timer - 1;
             }}
@@ -215,6 +213,7 @@ def display_timer(duration_minutes, key="timer"):
         </script>
     """
     components.html(timer_html, height=70)
+
 
 if authenticate_user():
     # Initialize session state variables
