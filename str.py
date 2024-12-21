@@ -228,6 +228,13 @@ def display_timer(duration):
             seconds = parseInt(timer % 60, 10);
             display.textContent = minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
             if (--timer < 0) {{
+                const buttons = parent.document.getElementsByTagName('button');
+                    for (let button of buttons) {{
+                        if (button.innerText === 'Submit Test') {{
+                            button.click();
+                            break;
+                        }}
+                    }}
                 clearInterval(interval);
                 display.textContent = "Time's up!";
                 window.dispatchEvent(new Event('timeUp'));  // Dispatch custom event when time is up
@@ -238,7 +245,7 @@ def display_timer(duration):
         startTimer({duration});
     }});
     </script>
-    <div style="font-size: 24px; color: red;" id="timer">10:00</div>
+    <div style="font-size: 24px; color: red;" id="timer">{duration/60}:00</div>
     """
     components.html(timer_html, height=50)
 
