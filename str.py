@@ -410,12 +410,10 @@ if authenticate_user():
                 # Display the timer
                 with st.container():
                     display_timer(timere_duration*60)
-            
-            with col2:
-                st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
 
             # Wrap the questions in a form
             with st.form(key="test_form"):
+                st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
                 total_q = len(st.session_state.test_questions)
                 
                 for i, question in enumerate(st.session_state.test_questions):
