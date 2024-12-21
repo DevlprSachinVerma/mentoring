@@ -377,7 +377,6 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            duration_minutes = int((st.session_state.end_time - st.session_state.start_time) / 60)
             
             # Create columns for timer and test progress
             col1, col2 = st.columns([1, 4])
@@ -385,7 +384,7 @@ if authenticate_user():
             with col1:
                 # Display the timer
                 with st.container():
-                    display_timer(duration_minutes)
+                    display_timer(timer_duration)
             
             with col2:
                 st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
