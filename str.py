@@ -409,7 +409,7 @@ if authenticate_user():
             with col1:
                 # Display the timer
                 with st.container():
-                    display_timer(timere_duration)
+                    display_timer(timere_duration*60)
             
             with col2:
                 st.write(f"Questions Attempted: {len(st.session_state.user_answers)} out of {len(st.session_state.test_questions)}")
