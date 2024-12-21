@@ -390,6 +390,7 @@ if authenticate_user():
                         st.session_state.user_answers = {}
                         st.session_state.test_completed = False
                         st.session_state.start_time = time.time()
+                        st.session_state.duration=timer_duration
                         st.session_state.end_time = st.session_state.start_time + (timer_duration * 60)
                         st.session_state.test_saved = False  # Add this flag
                         st.rerun()
@@ -401,7 +402,7 @@ if authenticate_user():
 
         # Show test questions if test is in progress
         if st.session_state.test_questions and not st.session_state.test_completed:
-            
+            timer_duration=st.session_state.duration
             # Create columns for timer and test progress
             col1, col2 = st.columns([1, 4])
             
