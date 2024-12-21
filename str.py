@@ -240,7 +240,7 @@ def display_timer(duration):
     </script>
     <div style="font-size: 24px; color: red;" id="timer">10:00</div>
     """
-    st.markdown(timer_html, unsafe_allow_html=True)
+    components.html(timer_html, height=50)
 
 
 if authenticate_user():
